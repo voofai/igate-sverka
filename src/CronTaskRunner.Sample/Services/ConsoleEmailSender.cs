@@ -15,9 +15,9 @@ public class ConsoleEmailSender : IEmailSender
         _logger = logger;
     }
 
-    public Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken)
+    public Task SendAsync(string to, string subject, string body, CancellationToken cancellationToken, bool isHtml = false)
     {
-        _logger.LogInformation("EMAIL -> {To} | {Subject} | {Body}", to, subject, body);
+        _logger.LogInformation("EMAIL -> {To} | {Subject} | isHtml={IsHtml} | {Body}", to, subject, isHtml, body);
         return Task.CompletedTask;
     }
 }

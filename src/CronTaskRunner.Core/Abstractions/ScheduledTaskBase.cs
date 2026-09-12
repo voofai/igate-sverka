@@ -16,7 +16,7 @@ public abstract class ScheduledTaskBase<TData, TResult> : IScheduledTask
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         var data = await GetDataAsync(cancellationToken);
-        var result = await Handle(data, cancellationToken);
+        var result = await HandleAsync(data, cancellationToken);
         await ProcessResultAsync(result, cancellationToken);
     }
 
@@ -29,7 +29,7 @@ public abstract class ScheduledTaskBase<TData, TResult> : IScheduledTask
     /// <summary>
     /// Шаг 2. Основная работа — сравнение/анализ полученных данных.
     /// </summary>
-    protected abstract Task<TResult> Handle(TData data, CancellationToken cancellationToken);
+    protected abstract Task<TResult> HandleAsync(TData data, CancellationToken cancellationToken);
 
     /// <summary>
     /// Шаг 3. Обработка результата (в нашем случае — рассылка по почте).

@@ -7,8 +7,9 @@ namespace CronTaskRunner.Core.Scheduling;
 
 /// <summary>
 /// Точка входа: читает список событий из конфигурации и для каждого
-/// запускает свой IEventRunner в отдельном потоке. Ошибка в одном
-/// раннере не роняет остальные — она логируется и раннер завершается.
+/// запускает свой независимый IEventRunner (все — конкурентно, через
+/// Task.WhenAll). Ошибка в одном раннере не роняет остальные —
+/// она логируется, и падает только этот раннер.
 /// </summary>
 public sealed class ScheduledEventsDispatcher : BackgroundService
 {
@@ -28,34 +29,34 @@ public sealed class ScheduledEventsDispatcher : BackgroundService
 
     protected override Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var events = _optionsMonitor.CurrentValue.Events;
+        // Набор событий (их имена) фиксируется при старте: добавление/удаление
+        // событий требует рестарта, но Enabled и CronExpressions существующего
+        // события каждый IEventRunner перечитывает из конфигурации сам.
+        var eventNames = _optionsMonitor.CurrentValue.Events.Select(e => e.Name).ToList();
 
-        if (events.Count == 0)
+        if (eventNames.Count == 0)
         {
             _logger.LogWarning("В конфигурации нет ни одного события расписания (секция ScheduledEvents:Events)");
         }
 
-        var runners = events.Select(e => RunEventSafelyAsync(e, stoppingToken));
+        var runners = eventNames.Select(name => RunEventSafelyAsync(name, stoppingToken));
 
         return Task.WhenAll(runners);
     }
 
-    private Task RunEventSafelyAsync(ScheduledEventDefinition definition, CancellationToken stoppingToken)
+    private async Task RunEventSafelyAsync(string eventName, CancellationToken stoppingToken)
     {
-        return Task.Run(async () =>
+        try
         {
-            try
-            {
-                await _eventRunner.RunAsync(definition, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                // штатная остановка хоста
-            }
-            catch (Exception ex)
-            {
-                _logger.LogCritical(ex, "[{Event}] Раннер события аварийно завершился", definition.Name);
-            }
-        }, stoppingToken);
+            await _eventRunner.RunAsync(eventName, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // штатная остановка хоста
+        }
+        catch (Exception ex)
+        {
+            _logger.LogCritical(ex, "[{Event}] Раннер события аварийно завершился", eventName);
+        }
     }
 }

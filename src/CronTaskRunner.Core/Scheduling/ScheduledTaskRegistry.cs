@@ -6,10 +6,17 @@ public sealed class ScheduledTaskRegistry : IScheduledTaskRegistry
 
     public ScheduledTaskRegistry(IEnumerable<TaskRegistration> registrations)
     {
-        _map = registrations.ToDictionary(
-            r => r.Key,
-            r => r.TaskType,
-            StringComparer.OrdinalIgnoreCase);
+        _map = new Dictionary<string, Type>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var registration in registrations)
+        {
+            if (!_map.TryAdd(registration.Key, registration.TaskType))
+            {
+                throw new InvalidOperationException(
+                    $"Задача с ключом '{registration.Key}' уже зарегистрирована " +
+                    $"(тип {_map[registration.Key].Name}). Ключи задач в AddScheduledTask<T>(key) должны быть уникальны.");
+            }
+        }
     }
 
     public Type Resolve(string taskKey)

@@ -42,7 +42,7 @@ public class ExchangeRateCheckTask : ScheduledTaskBase<ExchangeRateData, Exchang
         };
     }
 
-    protected override Task<ExchangeRateComparisonResult> Handle(
+    protected override Task<ExchangeRateComparisonResult> HandleAsync(
         ExchangeRateData data, CancellationToken cancellationToken)
     {
         var diff = Math.Abs(data.CurrentRate - data.PreviousRate);
